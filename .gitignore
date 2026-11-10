@@ -2,3 +2,5 @@
 application.yml
 # Lavalink logs
 logs/
+# Local music files
+local-music/
