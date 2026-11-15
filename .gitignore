@@ -1,0 +1,14 @@
+# Local environment variables
+config.env
+!config.env.example
+# Lavalink files
+Lavalink/Lavalink.jar
+Lavalink/logs
+Lavalink/plugins
+# Local music files
+local-music/test.mp3
+local-music/current.mp3
+# Python virtual environment
+bot-venv/
+__pycache__/
+*.py[cod]

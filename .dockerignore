@@ -1,0 +1,6 @@
+.git
+bot-venv/
+config.env
+__pycache__/
+local-music/
+*.py[cod]
