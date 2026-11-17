@@ -2,44 +2,78 @@ services:
   # Discord bot
   bot:
     build: .
+    
     env_file:
       - ./config.env
+    
     environment:
       MUSIC_PATH: /music
+    
     volumes:
+      # binds 'local-music' directory in repo to container's 'music' directory. Used for storing manually
+      # uploaded files for playback
       - type: bind
         source: ./local-music/
         target: /music
         read_only: false
     
+    # States that the bot depends on the lavalink 'audio' service being healthy before building.
+    # done to avoide race issues (the bot is trying to connect to lavalink before lavalink is set up)
+    depends_on:
+      audio:
+        condition: service_healthy
+    
+    networks:
+      - lavalink
+ 
 
   # Lavalink
   audio:
     # pin the image version to Lavalink v4 and use the alpine variant for a smaller image size
     image: ghcr.io/lavalink-devs/lavalink:4-alpine
+    
     container_name: lavalink
+    
     restart: unless-stopped
+    
     env_file:
       - ./config.env
+    
     environment:
       # set Java options here (6GB heap size)
-       JAVA_TOOL_OPTIONS: -Xmx6G
+       JAVA_TOOL_OPTIONS: -Xmx512M
       # set lavalink address
-       SERVER_ADDRESS: $(LAVALINK_ADDRESS)
+       SERVER_ADDRESS: ${LAVALINK_ADDRESS}
       # set lavalink server port
-       SERVER_PORT: $(LAVALINK_PORT)
+       SERVER_PORT: ${LAVALINK_PORT}
       # set lavalink server password
-       LAVALINK_SERVER_PASSWORD: $(lavalink_pass)
+       LAVALINK_SERVER_PASSWORD: ${lavalink_pass}
+    
     volumes:
       # mount application.yml from the same directory, if you want to use environment variables remove this line below
       - ./Lavalink/application.yml:/opt/Lavalink/application.yml
       # persist plugins between restarts, make sure to create the folder & set the correct permissions and user/group id mentioned above
       - ./plugins/:/opt/Lavalink/plugins/
+      # binds 'local-music' directory in repo to container's 'music' directory. Used for storing manually
+      # uploaded files for playback
       - type: bind
         source: ./local-music/
         target: /music
         read_only: true
 
+    # Defines a healthcheck for the 'audio' service that the bot can perform before trying to
+    # connect to Lavalink in order to avoid the bot trying to connect to a serve that hasn't finished
+    # setting up yet.
+    healthcheck:
+      # The test uses wget to connect to Lavalink and check its version in order to check if the
+      # service is ready to accept connections from the bot.
+      test:
+        ["CMD-SHELL", "wget -q --spider --header=\"Authorization: $$LAVALINK_SERVER_PASSWORD\" http://127.0.0.1:2333/version || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    
     networks:
       - lavalink
     expose:
@@ -47,9 +81,11 @@ services:
       - 2333
     ports:
       # you only need this if you want to make your lavalink accessible from outside of containers, keep in mind this will expose your lavalink to the internet
-      - "2333:2333"
+     # - "2333:2333"
       # if you want to restrict access to localhost only
-      # - "127.0.0.1:2333:2333"
+      - "127.0.0.1:2333:2333"
+
+
 networks:
   # create a lavalink network you can add other containers to, to give them access to Lavalink
   lavalink:

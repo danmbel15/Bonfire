@@ -107,7 +107,7 @@ class Bonfire(discord.Client):
                     extension = file.filename.rsplit(".", 1)[1].lower()
 
                     # Defines the path to the Bonfire/local-music directory and stores it in variable 'local_music'
-                    local_music = Path(__file__).parent.parent / "local_files_path"
+                    local_music = local_files_path
 
                     # Checks that the directory exists and if not, creates it
                     local_music.mkdir(parents=True, exist_ok=True)
@@ -127,7 +127,7 @@ class Bonfire(discord.Client):
                     # Prints to terminal the saved file's size in bytes
                     print(f"File Size: {path.stat().st_size if path.exists() else 0} bytes")
 
-                    # Creates variable 'tracks' which asks walink to search for the saved file in
+                    # Creates variable 'tracks' which asks wavelink to search for the saved file in
                     # Bonfire/local-music/
                     # ! Pool.fetch_tracks sends Lavalink the saved file's absolute path directly
                     #   while 'Player.search' adds a YT Music identifier by default to any query that
