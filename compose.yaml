@@ -43,15 +43,15 @@ services:
       # set Java options here (6GB heap size)
        JAVA_TOOL_OPTIONS: -Xmx512M
       # set lavalink address
-       SERVER_ADDRESS: ${LAVALINK_ADDRESS}
+       LAVALINK_ADDRESS: ${LAVALINK_ADDRESS}
       # set lavalink server port
-       SERVER_PORT: ${LAVALINK_PORT}
+       LAVALINK_PORT: ${LAVALINK_PORT}
       # set lavalink server password
-       LAVALINK_SERVER_PASSWORD: ${lavalink_pass}
+       LAVALINK_PASS: ${LAVALINK_PASS}
     
     volumes:
       # mount application.yml from the same directory, if you want to use environment variables remove this line below
-      - ./Lavalink/application.yml:/opt/Lavalink/application.yml
+      - ./k8s/application.yml:/opt/Lavalink/application.yml
       # persist plugins between restarts, make sure to create the folder & set the correct permissions and user/group id mentioned above
       - ./plugins/:/opt/Lavalink/plugins/
       # binds 'local-music' directory in repo to container's 'music' directory. Used for storing manually

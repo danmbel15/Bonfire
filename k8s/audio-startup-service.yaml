@@ -1,0 +1,21 @@
+# Service that publishes the lavalink pods' addresses even if they are not ready yet.
+# 'bot' pods will connect to this service and wait until Lavalink is ready to accept connections
+# before being fully built and avoiding the bot's wavelink trying to connect to Lavalink before
+# it's ready to accept connections.
+apiVersion: v1
+kind: Service
+metadata:
+  name: audio-startup
+  labels:
+    app: bonfire
+spec:
+  type: ClusterIP
+  publishNotReadyAddresses: true
+  selector:
+    app: bonfire
+    name: lavalink
+  ports:
+  - name: http
+    protocol: TCP
+    port: 2333
+    targetPort: 2333

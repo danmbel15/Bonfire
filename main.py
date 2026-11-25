@@ -1,39 +1,54 @@
 
 import discord 
+
+import os
+
+# Wavelink allows comunication between Lavalink and discord.py
+import wavelink 
+
+import logging
+
 from discord import app_commands 
 
 from pathlib import Path
 
 from dotenv import load_dotenv
-import os
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
 
 load_dotenv("config.env")
 
-lavalink_uri = os.getenv("lavalink_uri")
+LAVALINK_URI = os.getenv("LAVALINK_URI")
 
-lavalink_pass = os.getenv("lavalink_pass")
+LAVALINK_PASS = os.getenv("LAVALINK_PASS")
 
-discord_bot_token = os.getenv("discord_bot_token")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
-local_files_path = Path(os.getenv("MUSIC_PATH", "local-music"))
+MUSIC_PATH = Path(os.getenv("MUSIC_PATH", "local-music"))
 
-# Wavelink allows comunication between Lavalink and discord.py
-import wavelink 
 
 # defining the bot class, discord.Client is a class that represents a Discord bot client 
 # and provides methods for interacting with the Discord API.
 class Bonfire(discord.Client): 
+    
     #__init__ is a special method in Python classes that is called when an instance of the class
     # is created. It is used to initialize the attributes of the class and perform any necessary setup tasks.
     def __init__(self): 
+        
         # define the 'intents' variable to default intents
         intents = discord.Intents.default() 
+        
         # 'message_content' allows the bot to read the actual content of a command.
         # ! Must be enabled in the Discord Developer Portal !
         intents.message_content = True
+        
         # uses defined intents variable within the discord.Client class and assigns 
         # the intents varible from before to the super class constructor.
         super().__init__(intents=intents) 
+        
         # CommandTree is a class that allows you to create and manage application commands
         # for the bot. It provides methods for adding, removing, and executing commands,
         # as well as handling command interactions with users.
@@ -52,8 +67,9 @@ class Bonfire(discord.Client):
         # application.yaml and this script.
         self.node = wavelink.Node(
             identifier="lavalink",
-            uri=lavalink_uri,
-            password=lavalink_pass,
+            uri=LAVALINK_URI,
+            password=LAVALINK_PASS,
+            retries=None,
         )
 
         await wavelink.Pool.connect(
@@ -63,15 +79,35 @@ class Bonfire(discord.Client):
 
     # Prints 'Logged in as Bonfire' to terminal when the bot has successfully connected to Discord.
     async def on_ready(self): 
-        print(f"Logged in as {self.user}")
+        logging.info("Logged in as %s", self.user)
 
     # Prints 'Lavalink node is ready' to terminal when the wavelink connection between the bot and
     # Lavalink is successful
     async def on_wavelink_node_ready(self, payload):
-        print(f"Lavalink node is ready: {payload.node.identifier}")
+        logging.info(
+            "Lavalink node is ready: %s (session resumed: %s)",
+            payload.node.identifier,
+            payload.resumed
+        )
 
+    # Prints a notice when wavelink disconnects from Lavalink
+    async def on_wavelink_node_disconnected(self, payload):
+        logging.warning(
+            "Lavalink node disconnected: %s",
+            payload.node.identifier
+        )
+
+    # Prints a notice when the wavelink connection is closed.
+    async def on_wavelink_node_closed(self, node, disconnected):
+        logging.warning(
+            "Lavalink node closed: %s (%d disconnected players)",
+            node.identifier,
+            len(disconnected)
+        )
+     
     # Define reactions to certain kinds of messages (attachments)
     async def on_message(self, message):
+
         # If the message's author is a bot, ignore.
         if message.author.bot:
             return
@@ -107,7 +143,7 @@ class Bonfire(discord.Client):
                     extension = file.filename.rsplit(".", 1)[1].lower()
 
                     # Defines the path to the Bonfire/local-music directory and stores it in variable 'local_music'
-                    local_music = local_files_path
+                    local_music = MUSIC_PATH
 
                     # Checks that the directory exists and if not, creates it
                     local_music.mkdir(parents=True, exist_ok=True)
@@ -118,14 +154,12 @@ class Bonfire(discord.Client):
                     # Saves the file
                     await file.save(path)
 
-                    # Prints to terminal the saved file's absolute path.
-                    print(f"File saved in: {path.resolve()}")
-
-                    # Prints to terminal if the file indeed exists in the target directory
-                    print(f"File exists?: {path.exists()}")
-
-                    # Prints to terminal the saved file's size in bytes
-                    print(f"File Size: {path.stat().st_size if path.exists() else 0} bytes")
+                    # Logs sent file's saved location and size in bytes
+                    logging.info(
+                        "Audio file saved: %s (%d bytes)",
+                        path.name,
+                        path.stat().st_size
+                    )
 
                     # Creates variable 'tracks' which asks wavelink to search for the saved file in
                     # Bonfire/local-music/
@@ -149,8 +183,7 @@ class Bonfire(discord.Client):
                 else:
                     await message.reply("Incompatible file format. Use MP3 or WAV")
 
-
-
+            
 ## COMMANDS
 
 # Set Bonfire as the bot client and creates an instance of the Bonfire class, which will be called upon for commands and running the bot proper.
@@ -193,5 +226,7 @@ async def ping(interaction: discord.Interaction):
 
 
 # Run the bot with a given token from the Discord Developer Portal.
-# discord_bot_token is set in config.env
-client.run(discord_bot_token)
+# DISCORD_BOT_TOKEN is set in config.env
+# log_handler=None will make the client NOT set up any logging tools. Since the 'logger' lib
+# was set up at the start, this is done to avoid duplicate log messages.
+client.run(DISCORD_BOT_TOKEN, log_handler=None)

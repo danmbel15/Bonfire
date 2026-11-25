@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bot
+  labels:
+    app: bonfire
+    name: bot
+spec:
+  containers:
+  - name: bot
+    image: bonfire-bot:0.1.12
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 250Mi
+    volumeMounts:
+      - name: music-storage
+        mountPath: /music
+    env:
+      - name: LAVALINK_URI 
+        valueFrom:
+          configMapKeyRef:
+            name: bonfire-config
+            key: LAVALINK_URI
+      - name: LAVALINK_PASS
+        valueFrom:
+          secretKeyRef:
+            name: bonfire-secrets
+            key: LAVALINK_PASS
+      - name: DISCORD_BOT_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: bonfire-secrets
+            key: DISCORD_BOT_TOKEN
+      - name: MUSIC_PATH
+        valueFrom:
+          configMapKeyRef:
+            name: bonfire-config
+            key: MUSIC_PATH
+  volumes:
+    - name: music-storage
+      persistentVolumeClaim:
+        claimName: bonfire-music #name defined in music-pvc.yaml
+  initContainers:
+    - name: wait-for-lavalink
+      image: busybox:1.36
+      command:
+        - /bin/sh
+        - -c
+        - |
+          until wget -q -O /dev/null --header="Authorization: ${LAVALINK_PASS}" \
+            http://audio-startup:2333/version; do echo "Waiting for Lavalink..."
+            sleep 3
+          done
+          echo "Lavalink is ready!"
+      env:
+        - name: LAVALINK_PASS
+          valueFrom:
+            secretKeyRef:
+              name: bonfire-secrets
+              key: LAVALINK_PASS

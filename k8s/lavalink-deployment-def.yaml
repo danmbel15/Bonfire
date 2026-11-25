@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lavalink-deployment
+spec:
+  selector:
+    matchLabels:
+      app: bonfire
+      name: lavalink
+  template:
+    metadata:
+      name: lavalink
+      labels:
+        app: bonfire
+        name: lavalink
+    spec: 
+      containers:
+        - name: lavalink
+          image: ghcr.io/lavalink-devs/lavalink:4-alpine
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          ports:
+            - name: http    
+              containerPort: 2333
+              protocol: TCP
+          volumeMounts: 
+            - name: lavalink-config
+              mountPath: /opt/Lavalink/application.yml
+              subPath: application.yml
+              readOnly: true
+            - name: music-storage
+              mountPath: /music
+              readOnly: true
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - 'wget -q --spider --header="Authorization: ${LAVALINK_PASS}" http://127.0.0.1:2333/version'
+            # Time before first test
+            initialDelaySeconds: 5
+            # Amount of seconds between every test
+            periodSeconds: 5
+            # Max time a test can take
+            timeoutSeconds: 3
+            # Amount of attempts before container is declared NOT READY
+            failureThreshold: 3
+
+          env:
+            - name: LAVALINK_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: bonfire-config
+                  key: LAVALINK_PORT
+            - name: LAVALINK_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: bonfire-config
+                  key: LAVALINK_ADDRESS
+            - name: LAVALINK_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: bonfire-secrets
+                  key: LAVALINK_PASS
+      volumes:
+        - name: lavalink-config
+          configMap:
+            name: bonfire-lavalink-config
+        - name: music-storage
+          persistentVolumeClaim:
+            claimName: bonfire-music #name defined in music-pvc.yaml
+      
